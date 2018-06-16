@@ -1,88 +1,76 @@
 import * as process from "process";
-import {existsSync, readFileSync} from "fs";
-import {dirname, relative} from "path";
-import {
-	sys,
-	parseJsonConfigFileContent,
-	createDocumentRegistry,
-	createLanguageService,
-	flattenDiagnosticMessageText,
-	ScriptTarget,
-	ModuleKind,
-	ModuleResolutionKind,
-	DiagnosticCategory,
-} from "typescript";
-import {createServiceHost} from "./servicehost";
-
-
-
-const defaultCompilerOptions = {
-	module: ModuleKind.ES2015,
-	moduleResolution: ModuleResolutionKind.NodeJs,
-	sourceMap: true,
-};
-
+import { dirname, relative } from "path";
+import { createServiceHost } from "./servicehost";
 
 export function createService(tsconfig) {
-	const cwd = process.cwd();
-	const {options, fileNames, errors} = parseJsonConfigFileContent(tsconfig, sys, dirname(""), defaultCompilerOptions);
-	if(errors.length) {
-		throw new Error(errorMessage(errors[0], cwd));
-	}
+    const ts = tsconfig.typescript || require("typescript");
+    tsconfig = Object.assign({}, tsconfig);
+    delete tsconfig.typescript;
 
-	Object.assign(options, {
-		target: ScriptTarget.ES2015,
-		noEmitOnError: false,
-		suppressOutputPathCheck: true,
-	});
+    const defaultCompilerOptions = {
+        module: ts.ModuleKind.ES2015,
+        moduleResolution: ts.ModuleResolutionKind.NodeJs,
+        sourceMap: true,
+    };
 
-	const host = createServiceHost(options, cwd);
-	const reg = createDocumentRegistry();
-	const svc = createLanguageService(host, reg);
-	const availFiles = fileNames.map(host.normalizePath);
-	svc.host = host;
+    const cwd = process.cwd();
+    const { options, fileNames, errors } = ts.parseJsonConfigFileContent(tsconfig, ts.sys, dirname(""), defaultCompilerOptions);
+    if (errors.length) {
+        throw new Error(errorMessage(errors[0], cwd));
+    }
 
-	svc.emit = function(filename) {
-		const output = svc.getEmitOutput(filename);
-		let diag = svc.getSyntacticDiagnostics(filename);
-		if(!diag.length) {
-			diag = svc.getCompilerOptionsDiagnostics();
-			if(!diag.length) {
-				diag = svc.getSemanticDiagnostics(filename);
-			}
-		}
+    Object.assign({
+        target: ts.ScriptTarget.ES2015,
+        noEmitOnError: false,
+        suppressOutputPathCheck: true,
+    }, options);
 
-		output.errors = [];
-		output.warnings = [];
-		diag.forEach(d => {
-			const msg = errorMessage(d, cwd);
-			switch(d.category) {
-			case DiagnosticCategory.Error:
-				output.errors.push(msg);
-				break;
-			case DiagnosticCategory.Warning:
-				output.warnings.push(msg);
-				break;
-			}
-		});
-		return output;
-	}
+    const host = createServiceHost(options, cwd);
+    const reg = ts.createDocumentRegistry();
+    const svc = ts.createLanguageService(host, reg);
+    const availFiles = fileNames.map(host.normalizePath);
+    svc.host = host;
 
-	svc.filter = function(filename) {
-		return availFiles.includes(filename);
-	}
+    svc.emit = function (filename) {
+        const output = svc.getEmitOutput(filename);
+        let diag = svc.getSyntacticDiagnostics(filename);
+        if (!diag.length) {
+            diag = svc.getCompilerOptionsDiagnostics();
+            if (!diag.length) {
+                diag = svc.getSemanticDiagnostics(filename);
+            }
+        }
 
-	return svc;
-}
+        output.errors = [];
+        output.warnings = [];
+        diag.forEach(d => {
+            const msg = errorMessage(d, cwd);
+            switch (d.category) {
+                case ts.DiagnosticCategory.Error:
+                    output.errors.push(msg);
+                    break;
+                case ts.DiagnosticCategory.Warning:
+                    output.warnings.push(msg);
+                    break;
+            }
+        });
+        return output;
+    }
 
+    svc.filter = function (filename) {
+        return availFiles.includes(filename);
+    }
 
-function errorMessage(diagnostic, cwd) {
-	const text = flattenDiagnosticMessageText(diagnostic.messageText, "\n");
-	if(!diagnostic.file) {
-		return `tsc: ${text}`;
-	} else {
-		const {line} = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
-		const file = relative(cwd, diagnostic.file.fileName);
-		return `${file}:${line+1}: ${text}`;
-	}
+    return svc;
+
+    function errorMessage(diagnostic, cwd) {
+        const text = ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n");
+        if (!diagnostic.file) {
+            return `tsc: ${text}`;
+        } else {
+            const { line } = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
+            const file = relative(cwd, diagnostic.file.fileName);
+            return `${file}:${line + 1}: ${text}`;
+        }
+    }
 }
