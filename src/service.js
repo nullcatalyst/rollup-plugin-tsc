@@ -1,13 +1,9 @@
 import * as process from "process";
 import { dirname, relative } from "path";
 import { createServiceHost } from "./servicehost";
-// import * as ts from "typescript";
+import * as typescript from "typescript";
 
-export function createService(tsconfig) {
-    const ts = tsconfig.typescript || require("typescript");
-    tsconfig = Object.assign({}, tsconfig);
-    delete tsconfig.typescript;
-
+export function createService(tsconfig, ts = typescript) {
     const defaultCompilerOptions = {
         target: ts.ScriptTarget.ES2015,
         module: ts.ModuleKind.ES2015,
