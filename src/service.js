@@ -1,6 +1,7 @@
 import * as process from "process";
 import { dirname, relative } from "path";
 import { createServiceHost } from "./servicehost";
+// import * as ts from "typescript";
 
 export function createService(tsconfig) {
     const ts = tsconfig.typescript || require("typescript");
@@ -8,6 +9,7 @@ export function createService(tsconfig) {
     delete tsconfig.typescript;
 
     const defaultCompilerOptions = {
+        target: ts.ScriptTarget.ES2015,
         module: ts.ModuleKind.ES2015,
         moduleResolution: ts.ModuleResolutionKind.NodeJs,
         sourceMap: true,
@@ -19,11 +21,12 @@ export function createService(tsconfig) {
         throw new Error(errorMessage(errors[0], cwd));
     }
 
-    Object.assign({
-        target: ts.ScriptTarget.ES2015,
+    // Force a few options
+    // These are required to allow rollup (and rollup-watch) to run smoothly
+    Object.assign(options, {
         noEmitOnError: false,
         suppressOutputPathCheck: true,
-    }, options);
+    });
 
     const host = createServiceHost(options, cwd);
     const reg = ts.createDocumentRegistry();
