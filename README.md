@@ -21,12 +21,16 @@ export default {
 	plugins: [
 		tsc(
 			// Put your tsconfig here
-			require("./tsconfig.json"),
-			// [or] Create the tsconfig options directly (useful for changing settings between debug/production builds)
-			// { /* ... */ },
+			Object.assign({},
+				require("./tsconfig.json"),
 
-			// [optional] Pass your specific version of typescript as a second parameter
-			typescript
+				// [optional] Pass your specific version of typescript as a second parameter
+				{ typescript }
+			)
+
+			// [note] You can also create the tsconfig options directly
+			//        (useful for changing settings between debug/production builds)
+			// { /* ... */ }
 		),
 	]
 };

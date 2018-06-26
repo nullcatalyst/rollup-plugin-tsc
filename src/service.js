@@ -3,13 +3,15 @@ import { dirname, relative } from "path";
 import { createServiceHost } from "./servicehost";
 import * as typescript from "typescript";
 
-export function createService(tsconfig, ts = typescript) {
+export function createService(tsconfig) {
     const defaultCompilerOptions = {
-        target: ts.ScriptTarget.ES2015,
-        module: ts.ModuleKind.ES2015,
-        moduleResolution: ts.ModuleResolutionKind.NodeJs,
         sourceMap: true,
     };
+
+    // Get the custom version of typescript, if one is passed
+    const ts = tsconfig.typescript || typescript;
+    tsconfig = Object.assign({}, tsconfig);
+    delete tsconfig.typescript;
 
     const cwd = process.cwd();
     const { options, fileNames, errors } = ts.parseJsonConfigFileContent(tsconfig, ts.sys, dirname(""), defaultCompilerOptions);
@@ -17,9 +19,14 @@ export function createService(tsconfig, ts = typescript) {
         throw new Error(errorMessage(errors[0], cwd));
     }
 
-    // Force a few options
-    // These are required to allow rollup (and rollup-watch) to run smoothly
-    Object.assign(options, {
+    // Set a few options
+    Object.assign({
+        // Overridable options
+        target: ts.ScriptTarget.ES2015,
+        module: ts.ModuleKind.ES2015,
+        moduleResolution: ts.ModuleResolutionKind.NodeJs,
+    }, options, {
+        // These are required to allow rollup (and rollup-watch) to run smoothly
         noEmitOnError: false,
         suppressOutputPathCheck: true,
     });
